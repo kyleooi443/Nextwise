@@ -1,0 +1,39 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { ArrowRight, CalendarDays, Check, Clock3, LockKeyhole, LockOpen, RotateCcw, Undo2 } from "lucide-react";
+import { useNextwise } from "@/components/app-provider";
+import { LevelTag } from "@/components/level-tag";
+import { formatRelative } from "@/lib/scheduler";
+import type { CalendarBlock } from "@/types/nextwise";
+
+type ViewMode = "day" | "week";
+
+function time(value: string) { return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(value)); }
+function duration(block: CalendarBlock) { return Math.round((new Date(block.endAt).getTime() - new Date(block.startAt).getTime()) / 60_000); }
+
+export function TimelineScreen() {
+  const { state, hydrated, toggleBlockLock, acceptRevision, undoLatestRevision, setPreferences } = useNextwise();
+  const [view, setView] = useState<ViewMode>("day");
+  const [showFixed, setShowFixed] = useState(true);
+  const today = new Date();
+  const dayName = new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" }).format(today);
+  const blocks = useMemo(() => [...state.blocks].filter((block) => showFixed || block.kind === "flexible").sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()), [state.blocks, showFixed]);
+  const markerIndex = blocks.findIndex((block) => new Date(block.startAt) > today);
+  const dueByDay = useMemo(() => Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(); date.setDate(date.getDate() + index);
+    return { date, tasks: state.tasks.filter((task) => task.status !== "completed" && task.deadlineAt && new Date(task.deadlineAt).toDateString() === date.toDateString()) };
+  }), [state.tasks]);
+
+  if (!hydrated) return <div className="loading-line">Loading your timeline…</div>;
+
+  return <div className="timeline-screen">
+    <div className="page-heading"><div><div className="date-line">Your day, with room to adjust</div><h1>Timeline</h1><p>Fixed plans stay put. Focus time can move when your day changes.</p></div><div className="heading-actions"><div className="view-toggle" role="tablist" aria-label="Timeline view"><button role="tab" aria-selected={view === "day"} className={view === "day" ? "selected" : ""} onClick={() => setView("day")}>Day</button><button role="tab" aria-selected={view === "week"} className={view === "week" ? "selected" : ""} onClick={() => setView("week")}>Week</button></div></div></div>
+    {state.revisions[0] && <section className="timeline-revision surface"><div className="revision-icon"><RotateCcw size={15} /></div><div><b>{state.revisions[0].undoneAt ? "Previous plan restored" : "Your plan has been updated"}</b><p>{state.revisions[0].undoneAt ? "The revision is retained in your history." : state.revisions[0].explanation}</p></div>{!state.revisions[0].accepted && !state.revisions[0].undoneAt && <><button className="button" onClick={undoLatestRevision}><Undo2 size={14} /> Undo</button><button className="button button-blue" onClick={() => acceptRevision(state.revisions[0].id)}><Check size={14} /> Accept plan</button></>}</section>}
+    {view === "day" ? <div className="timeline-layout"><section className="timeline-day surface"><div className="timeline-day-head"><div><span className="eyebrow">Today</span><h2>{dayName}</h2></div><button className="button" onClick={() => setShowFixed((value) => !value)}><CalendarDays size={14} /> {showFixed ? "Hide fixed events" : "Show fixed events"}</button></div>
+      <div className="timeline-events">{blocks.length ? <>{blocks.map((block, index) => { const task = state.tasks.find((item) => item.id === block.taskId); return <div key={block.id}>{index === markerIndex && <div className="current-time-marker"><span className="mono">Now · {time(today.toISOString())}</span><i /></div>}<article className={`timeline-event event-${block.kind}`}><div className="timeline-time mono"><b>{time(block.startAt)}</b><small>{duration(block)} min</small></div><div className="timeline-spine"><i /></div><div className="timeline-event-card"><div className="timeline-event-info"><span className="event-kind">{block.kind === "fixed" ? "Fixed commitment" : block.kind === "break" ? "Break" : "Focus block"}</span><h3>{block.title}</h3>{task && <><div className="timeline-task-meta"><LevelTag level={task.reasoningLevel} />{task.deadlineAt && <span className="tag">Due {formatRelative(task.deadlineAt)}</span>}</div><p>{task.microStep}</p></>}</div><div className="timeline-event-actions">{block.kind === "flexible" && <button className="icon-button" aria-label={block.locked ? `Unlock ${block.title}` : `Lock ${block.title}`} onClick={() => toggleBlockLock(block.id)}>{block.locked ? <LockKeyhole size={15} /> : <LockOpen size={15} />}</button>}<span className="event-end mono">{time(block.endAt)}</span></div></div></article></div>; })}{markerIndex < 0 && <div className="current-time-marker"><span className="mono">Now · {time(today.toISOString())}</span><i /></div>}</> : <div className="timeline-empty"><p>No events are scheduled in this view.</p><Link href="/inbox">Add a task</Link></div>}</div>
+      <div className="timeline-note"><LockKeyhole size={14} /><span>Fixed commitments and locked focus blocks are preserved when NEXTWISE replans.</span></div>
+    </section><aside className="timeline-side"><section className="surface timeline-side-panel"><h2>Available focus time</h2><p>How much room do you have for work today?</p><div className="timeline-availability">{[15, 30, 60, 120].map((minutes) => <button type="button" key={minutes} className={state.preferences.availableMinutes === minutes ? "selected" : ""} onClick={() => setPreferences({ availableMinutes: minutes })}>{minutes === 120 ? "2h+" : `${minutes}m`}</button>)}</div><Link href="/settings">Change availability in settings <ArrowRight size={12} /></Link></section><section className="surface timeline-side-panel"><h2>Upcoming deadlines</h2>{state.tasks.filter((task) => task.status !== "completed" && task.deadlineAt).sort((a, b) => new Date(a.deadlineAt!).getTime() - new Date(b.deadlineAt!).getTime()).slice(0, 4).map((task) => <div className="timeline-deadline" key={task.id}><span><b>{task.title}</b><small>{task.remainingMinutes} min remaining</small></span><span className="tag">{formatRelative(task.deadlineAt!)}</span></div>)}</section><section className="surface timeline-side-panel"><h2>Schedule controls</h2><p>Use Focus to record a missed or partial session and rebuild the flexible blocks around what remains.</p><Link className="button button-primary" href="/focus"><Clock3 size={14} /> Start focus</Link></section></aside></div> : <section className="week-agenda surface"><div className="week-agenda-head"><div><span className="eyebrow">Next seven days</span><h2>Deadlines and commitments</h2></div><p>Fixed commitments and scheduled focus blocks are shown for each day.</p></div><div className="week-days">{dueByDay.map(({ date, tasks }, index) => { const dayBlocks = blocks.filter((block) => new Date(block.startAt).toDateString() === date.toDateString()); return <section className={`week-day ${index === 0 ? "is-today" : ""}`} key={date.toISOString()}><header><span>{new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(date)}</span><b>{date.getDate()}</b></header>{dayBlocks.map((block) => <div className={`week-event ${block.kind === "flexible" ? "task" : "fixed"}`} key={block.id}><span>{time(block.startAt)} · {duration(block)} min{block.locked ? " · Locked" : ""}</span><b>{block.title}</b></div>)}{tasks.map((task) => <div className="week-event task" key={task.id}><span>Due {time(task.deadlineAt!)}</span><b>{task.title}</b><LevelTag level={task.reasoningLevel} /></div>)}{!tasks.length && !dayBlocks.length && <span className="week-empty">No events</span>}</section>; })}</div></section>}
+  </div>;
+}
