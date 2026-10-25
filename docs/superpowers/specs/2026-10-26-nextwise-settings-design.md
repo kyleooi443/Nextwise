@@ -20,7 +20,7 @@ Keep the existing Personal, Availability, Display, and Data sections and the exp
 - Context panel visibility continues to control Today’s context column.
 - Time zone is a valid IANA time-zone identifier. The selected zone governs date and time formatting, local-day grouping, deadline interpretation, and work-window boundaries used for schedule rebuilding. Existing stored zones remain valid; invalid stored zones fall back to the device zone during state migration.
 - Theme supports system, light, and dark. System follows `prefers-color-scheme` and responds if the operating-system preference changes. Light and dark apply to shared app surfaces, navigation, controls, forms, cards, and overlays, not only the Settings page.
-- Save writes the validated draft through the existing provider and local-storage path. Rebuild the plan only when schedule-affecting preferences change. Clear the draft after a successful save so subsequent edits begin from current state.
+- Save writes the validated draft through the existing provider and local-storage path. Rebuild the plan when availability, work hours, time zone, or energy changes because each affects schedule boundaries or ranking. Do not create a schedule revision for name, theme, or context-panel changes. Clear the draft after a successful save so subsequent edits begin from current state.
 - Reset remains an explicit confirmation and restores demo tasks and default preferences in browser storage.
 
 ### Data and compatibility
@@ -44,7 +44,7 @@ Settings page, shared preference handling, shared date/time-zone utilities, sche
 
 1. Invalid names, time zones, and work windows cannot be saved; errors appear beside the relevant controls.
 2. Saving valid preferences persists them across reload and updates the relevant app behavior.
-3. Changing availability, work hours, or energy updates recommendations and rebuilds flexible schedule blocks as appropriate; non-scheduling changes do not create an unnecessary schedule revision.
+3. Changing availability, work hours, time zone, or energy updates recommendations and rebuilds flexible schedule blocks; name, theme, and context-panel changes do not create an unnecessary schedule revision.
 4. Selecting a time zone changes date/time display and day grouping consistently, and work-window calculations use that zone.
 5. System, light, and dark themes render legibly across the app; system mode follows changes to the OS preference.
 6. Reset requires confirmation and restores the demo state.
