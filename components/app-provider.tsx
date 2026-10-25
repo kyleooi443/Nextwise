@@ -76,8 +76,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return;
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    document.documentElement.dataset.theme = state.preferences.theme === "system" ? (prefersDark ? "dark" : "light") : state.preferences.theme;
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       window.setTimeout(() => setStorageWarning(false), 0);
@@ -85,6 +83,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       window.setTimeout(() => setStorageWarning(true), 0);
     }
   }, [state, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const applyTheme = () => {
+      document.documentElement.dataset.theme = state.preferences.theme === "system"
+        ? (media.matches ? "dark" : "light")
+        : state.preferences.theme;
+    };
+    applyTheme();
+    if (state.preferences.theme !== "system") return;
+    media.addEventListener("change", applyTheme);
+    return () => media.removeEventListener("change", applyTheme);
+  }, [hydrated, state.preferences.theme]);
 
   const reviseTask = useCallback((id: string, updates: Partial<Task>, trigger: string) => {
     setState((current) => {
