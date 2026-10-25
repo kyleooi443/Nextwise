@@ -1,4 +1,5 @@
 import type { AppState, EnergyLevel, Recommendation, RecommendationFactor, RecommendationResult, Task } from "@/types/nextwise";
+import { dayKeyInTimeZone, formatInTimeZone } from "@/lib/date-time";
 
 const MINUTES_PER_DAY = 24 * 60;
 
@@ -35,7 +36,7 @@ function recommendationFor(task: Task, state: AppState, now: Date): Recommendati
   const p = Math.min(24, task.dismissals * 8 + (task.status === "in_progress" ? 0 : 0));
   const score = 30 * u + 20 * i + 15 * f + 15 * e + 10 * d + 10 * s - p;
   const factors: RecommendationFactor[] = [
-    { key: "urgency", label: "Deadline", value: u, points: 30 * u, reason: task.deadlineAt ? `Due ${formatRelative(task.deadlineAt, now)}` : "No deadline set" },
+    { key: "urgency", label: "Deadline", value: u, points: 30 * u, reason: task.deadlineAt ? `Due ${formatRelative(task.deadlineAt, now, state.preferences.timezone)}` : "No deadline set" },
     { key: "importance", label: "Importance", value: i, points: 20 * i, reason: i >= 0.8 ? "Marked important" : "Importance set by you" },
     { key: "fit", label: "Time fit", value: f, points: 15 * f, reason: duration < task.remainingMinutes ? `A ${duration}-minute step fits now` : `Fits your ${available}-minute window` },
     { key: "energy", label: "Energy match", value: e, points: 15 * e, reason: `L${task.reasoningLevel} fits your ${state.preferences.energy} energy setting` },
@@ -58,15 +59,18 @@ export function recommendNext(state: AppState, now = new Date()): Recommendation
   return { ranked, risks, unavailable };
 }
 
-export function formatRelative(dateString: string, now = new Date()): string {
-  const minutes = minutesUntil(dateString, now) ?? 0;
+export function formatRelative(dateString: string, now = new Date(), timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"): string {
+  const deadline = new Date(dateString);
+  const minutes = (deadline.getTime() - now.getTime()) / 60_000;
   if (minutes < 0) return "overdue";
   if (minutes < 60) return `in ${Math.max(1, Math.round(minutes))} min`;
-  const days = Math.floor(minutes / MINUTES_PER_DAY);
-  if (days === 0) return "today";
+  const todayKey = dayKeyInTimeZone(now, timeZone);
+  const deadlineKey = dayKeyInTimeZone(deadline, timeZone);
+  if (deadlineKey === todayKey) return "today";
+  const days = Math.round((Date.parse(`${deadlineKey}T00:00:00Z`) - Date.parse(`${todayKey}T00:00:00Z`)) / MINUTES_PER_DAY / 60_000);
   if (days === 1) return "tomorrow";
   if (days < 7) return `in ${days} days`;
-  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(new Date(dateString));
+  return formatInTimeZone(deadline, timeZone, { month: "short", day: "numeric" });
 }
 
 export function getTask(state: AppState, recommendation?: Recommendation): Task | undefined {

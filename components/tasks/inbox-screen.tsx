@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Check, ChevronDown, Circle, Clock3, Pencil, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useNextwise } from "@/components/app-provider";
 import { LevelTag } from "@/components/level-tag";
+import { dayKeyInTimeZone } from "@/lib/date-time";
 import { TaskEditor } from "@/components/tasks/task-editor";
 import { formatRelative } from "@/lib/scheduler";
 import type { Task } from "@/types/nextwise";
@@ -12,23 +13,24 @@ import type { Task } from "@/types/nextwise";
 type Filter = "all" | "today" | "upcoming" | "completed" | "overdue" | "blocked";
 const filters: { key: Filter; label: string }[] = [{ key: "all", label: "All tasks" }, { key: "today", label: "Today" }, { key: "upcoming", label: "Upcoming" }, { key: "completed", label: "Completed" }, { key: "overdue", label: "Overdue" }, { key: "blocked", label: "Blocked" }];
 
-function matchesFilter(task: Task, filter: Filter): boolean {
+function matchesFilter(task: Task, filter: Filter, timeZone: string): boolean {
   const deadline = task.deadlineAt ? new Date(task.deadlineAt) : undefined;
   const now = new Date();
   if (filter === "all") return task.status !== "completed";
   if (filter === "completed") return task.status === "completed";
   if (filter === "blocked") return task.status === "blocked";
   if (filter === "overdue") return task.status !== "completed" && Boolean(deadline && deadline < now);
-  if (filter === "today") return task.status !== "completed" && Boolean(deadline && deadline.toDateString() === now.toDateString());
-  return task.status !== "completed" && Boolean(deadline && deadline > now && deadline.toDateString() !== now.toDateString());
+  if (filter === "today") return task.status !== "completed" && Boolean(deadline && dayKeyInTimeZone(deadline, timeZone) === dayKeyInTimeZone(now, timeZone));
+  return task.status !== "completed" && Boolean(deadline && deadline > now && dayKeyInTimeZone(deadline, timeZone) !== dayKeyInTimeZone(now, timeZone));
 }
 
 function TaskRow({ task, onEdit, onComplete, onDelete }: { task: Task; onEdit: () => void; onComplete: () => void; onDelete: () => void }) {
   const { state } = useNextwise();
+  const timeZone = state.preferences.timezone;
   const blockedBy = task.dependencies.map((id) => state.tasks.find((item) => item.id === id)).filter((item) => item && item.status !== "completed");
   return <article className={`inbox-row ${task.status === "completed" ? "is-complete" : ""}`}>
     <button className="task-check" onClick={onComplete} aria-label={task.status === "completed" ? `Reopen ${task.title}` : `Complete ${task.title}`}>{task.status === "completed" ? <Check size={15} /> : <Circle size={17} />}</button>
-    <div className="inbox-task-main"><button className="inbox-task-title" onClick={onEdit}>{task.title}</button>{task.description && <p>{task.description}</p>}{blockedBy.length > 0 && <span className="dependency-chip">Waiting on {blockedBy[0]?.title}</span>}<div className="inbox-meta"><LevelTag level={task.reasoningLevel} />{task.deadlineAt ? <span className={`tag ${new Date(task.deadlineAt) < new Date() && task.status !== "completed" ? "tag-danger" : ""}`}><Clock3 size={11} /> Due {formatRelative(task.deadlineAt)}</span> : <span className="tag">No deadline</span>}{task.project && <span className="project-label">{task.project}</span>}</div></div>
+    <div className="inbox-task-main"><button className="inbox-task-title" onClick={onEdit}>{task.title}</button>{task.description && <p>{task.description}</p>}{blockedBy.length > 0 && <span className="dependency-chip">Waiting on {blockedBy[0]?.title}</span>}<div className="inbox-meta"><LevelTag level={task.reasoningLevel} />{task.deadlineAt ? <span className={`tag ${new Date(task.deadlineAt) < new Date() && task.status !== "completed" ? "tag-danger" : ""}`}><Clock3 size={11} /> Due {formatRelative(task.deadlineAt, new Date(), timeZone)}</span> : <span className="tag">No deadline</span>}{task.project && <span className="project-label">{task.project}</span>}</div></div>
     <div className="task-effort"><b>{task.remainingMinutes}</b><span>min left</span></div>
     <div className="task-row-actions"><button className="icon-button" onClick={onEdit} aria-label={`Edit ${task.title}`}><Pencil size={15} /></button><button className="icon-button delete-task" onClick={onDelete} aria-label={`Delete ${task.title}`}><Trash2 size={15} /></button></div>
   </article>;
@@ -37,6 +39,7 @@ function TaskRow({ task, onEdit, onComplete, onDelete }: { task: Task; onEdit: (
 export function InboxScreen() {
   const searchParams = useSearchParams();
   const { state, hydrated, updateTask, completeTask, deleteTask } = useNextwise();
+  const timeZone = state.preferences.timezone;
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("deadline");
@@ -55,7 +58,7 @@ export function InboxScreen() {
   }, [searchParams]);
 
   const visible = useMemo(() => state.tasks.filter((task) => {
-    if (!matchesFilter(task, filter)) return false;
+    if (!matchesFilter(task, filter, timeZone)) return false;
     if (query && !`${task.title} ${task.description ?? ""} ${task.project ?? ""}`.toLowerCase().includes(query.toLowerCase())) return false;
     if (reasoning !== "any" && task.reasoningLevel !== Number(reasoning)) return false;
     if (effort === "short" && task.remainingMinutes > 25 || effort === "medium" && (task.remainingMinutes <= 25 || task.remainingMinutes > 60) || effort === "long" && task.remainingMinutes <= 60) return false;
@@ -67,7 +70,7 @@ export function InboxScreen() {
     if (!a.deadlineAt) return 1;
     if (!b.deadlineAt) return -1;
     return new Date(a.deadlineAt).getTime() - new Date(b.deadlineAt).getTime();
-  }), [state.tasks, filter, query, reasoning, effort, sort]);
+  }), [state.tasks, filter, query, reasoning, effort, sort, timeZone]);
 
   function edit(task?: Task, initialText = "") { setEditing(task); setCaptureText(initialText); setEditorOpen(true); }
 

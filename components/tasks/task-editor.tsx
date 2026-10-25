@@ -3,35 +3,40 @@
 import { FormEvent, useState } from "react";
 import { Check, ChevronDown, Mic, X } from "lucide-react";
 import { useNextwise } from "@/components/app-provider";
+import { addDaysToDayKey, dayKeyInTimeZone, localDateTimeToInstant } from "@/lib/date-time";
 import type { Task, TaskDraft } from "@/types/nextwise";
 
-function localDate(value?: string) {
+function localDate(value?: string, timeZone?: string) {
   if (!value) return "";
+  if (timeZone) return dayKeyInTimeZone(value, timeZone);
   const date = new Date(value);
   return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, "0")}-${`${date.getDate()}`.padStart(2, "0")}`;
 }
 
-function parseCapture(input: string): { title: string; deadlineAt?: string } {
+function parseCapture(input: string, timeZone: string): { title: string; deadlineAt?: string } {
   const text = input.trim();
   const tomorrow = /\btomorrow\b/i.test(text);
   const today = /\btoday\b/i.test(text);
   const inDays = text.match(/\bin\s+(\d+)\s+days?\b/i);
-  const date = new Date();
   let found = false;
-  if (tomorrow) { date.setDate(date.getDate() + 1); found = true; }
-  else if (inDays) { date.setDate(date.getDate() + Number(inDays[1])); found = true; }
+  let dayOffset = 0;
+  if (tomorrow) { dayOffset = 1; found = true; }
+  else if (inDays) { dayOffset = Number(inDays[1]); found = true; }
   else if (today) found = true;
-  if (found) date.setHours(23, 59, 0, 0);
+  const deadlineAt = found
+    ? localDateTimeToInstant(addDaysToDayKey(dayKeyInTimeZone(new Date(), timeZone), dayOffset), "23:59", timeZone).toISOString()
+    : undefined;
   const title = text.replace(/\b(tomorrow|today|in\s+\d+\s+days?)\b/ig, "").replace(/\s+/g, " ").replace(/\s+([,.!?])/g, "$1").trim();
-  return { title: title || text, deadlineAt: found ? date.toISOString() : undefined };
+  return { title: title || text, deadlineAt };
 }
 
 export function TaskEditor({ task, initialText = "", onClose }: { task?: Task; initialText?: string; onClose: () => void }) {
   const { state, addTask, updateTask } = useNextwise();
+  const timeZone = state.preferences.timezone;
   const [quick, setQuick] = useState(task?.title ?? initialText);
-  const [title, setTitle] = useState(task?.title ?? parseCapture(initialText).title);
+  const [title, setTitle] = useState(task?.title ?? parseCapture(initialText, timeZone).title);
   const [description, setDescription] = useState(task?.description ?? "");
-  const [deadline, setDeadline] = useState(localDate(task?.deadlineAt));
+  const [deadline, setDeadline] = useState(localDate(task?.deadlineAt, timeZone));
   const [importance, setImportance] = useState(task?.importance ?? 0.7);
   const [estimate, setEstimate] = useState(task?.estimatedMinutes ?? 25);
   const [splittable, setSplittable] = useState(task?.splittable ?? true);
@@ -44,7 +49,7 @@ export function TaskEditor({ task, initialText = "", onClose }: { task?: Task; i
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const parsed = parseCapture(title || quick);
+    const parsed = parseCapture(title || quick, timeZone);
     const cleanTitle = (title || parsed.title).trim();
     if (!cleanTitle) { setError("Add a task name to continue."); return; }
     const deadlineAt = deadline ? new Date(`${deadline}T23:59:00`).toISOString() : parsed.deadlineAt;
@@ -52,7 +57,7 @@ export function TaskEditor({ task, initialText = "", onClose }: { task?: Task; i
       title: cleanTitle,
       description: description.trim() || undefined,
       project: project.trim() || undefined,
-      deadlineAt,
+      deadlineAt: deadline ? localDateTimeToInstant(deadline, "23:59", timeZone).toISOString() : deadlineAt,
       importance: Number(importance),
       estimatedMinutes: Math.max(5, Number(estimate) || 25),
       remainingMinutes: task?.remainingMinutes ?? Math.max(5, Number(estimate) || 25),
@@ -70,7 +75,7 @@ export function TaskEditor({ task, initialText = "", onClose }: { task?: Task; i
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="task-modal surface" role="dialog" aria-modal="true" aria-labelledby="task-modal-title">
     <div className="modal-head"><div><span className="eyebrow">{task ? "Edit task" : "Quick capture"}</span><h2 id="task-modal-title">{task ? "Update task details" : "Add a task"}</h2></div><button className="icon-button" onClick={onClose} aria-label="Close task editor"><X size={18} /></button></div>
     <form onSubmit={submit}>
-      {!task && <label className="form-label">What do you need to do?<div className="capture-row"><input className="field" value={quick} onChange={(event) => { const parsed = parseCapture(event.target.value); setQuick(event.target.value); setTitle(parsed.title); setDeadline(parsed.deadlineAt ? localDate(parsed.deadlineAt) : ""); }} placeholder="e.g. Finish calculus assignment tomorrow" autoFocus /><button type="button" className="voice-button" title="Voice capture is not enabled in this prototype" aria-label="Voice capture unavailable"><Mic size={16} /></button></div><small className="form-hint">You can include “today,” “tomorrow,” or “in 3 days.” Detected details stay editable.</small></label>}
+      {!task && <label className="form-label">What do you need to do?<div className="capture-row"><input className="field" value={quick} onChange={(event) => { const parsed = parseCapture(event.target.value, timeZone); setQuick(event.target.value); setTitle(parsed.title); setDeadline(parsed.deadlineAt ? localDate(parsed.deadlineAt, timeZone) : ""); }} placeholder="e.g. Finish calculus assignment tomorrow" autoFocus /><button type="button" className="voice-button" title="Voice capture is not enabled in this prototype" aria-label="Voice capture unavailable"><Mic size={16} /></button></div><small className="form-hint">You can include “today,” “tomorrow,” or “in 3 days.” Detected details stay editable.</small></label>}
       <label className="form-label">Task name<input className="field" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Name the task" /></label>
       <button type="button" className="details-toggle" onClick={() => setDetailsOpen((open) => !open)} aria-expanded={detailsOpen}>Task details <ChevronDown size={15} className={detailsOpen ? "rotated" : ""} /></button>
       {detailsOpen && <div className="form-grid">

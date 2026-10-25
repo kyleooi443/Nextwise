@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { createSeedState, newId } from "@/data/seed";
+import { isValidTimeZone } from "@/lib/date-time";
 import { rebuildPlan, undoRevision } from "@/lib/reschedule";
 import type { AppState, FocusOutcome, Task, TaskDraft, UserPreferences } from "@/types/nextwise";
 
@@ -41,7 +42,14 @@ function readStoredState(): { state: AppState; warning: boolean } {
     const migrated: AppState = {
       ...parsed,
       tasks: parsed.tasks.map((task) => ({ ...task, splittable: task.splittable ?? true, dependencies: task.dependencies ?? [], dismissals: task.dismissals ?? 0 })),
-      preferences: { ...createSeedState().preferences, ...parsed.preferences, theme: parsed.preferences.theme ?? "system" },
+      preferences: {
+        ...createSeedState().preferences,
+        ...parsed.preferences,
+        timezone: typeof parsed.preferences.timezone === "string" && isValidTimeZone(parsed.preferences.timezone)
+          ? parsed.preferences.timezone
+          : Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+        theme: parsed.preferences.theme ?? "system",
+      },
       sessions: (Array.isArray(parsed.sessions) ? parsed.sessions : []).map((session) => ({ ...session, pausedSeconds: session.pausedSeconds ?? 0 })),
       revisions: Array.isArray(parsed.revisions) ? parsed.revisions : [],
     };

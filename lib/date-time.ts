@@ -54,23 +54,29 @@ export function formatInTimeZone(value: Date | string, timeZone: string, options
   return new Intl.DateTimeFormat(undefined, { ...options, timeZone }).format(dateValue(value));
 }
 
-export function localTimeToInstant(date: Date, time: string, timeZone: string): Date {
-  if (Number.isNaN(date.getTime())) throw new RangeError("Invalid date");
+export function addDaysToDayKey(dayKey: string, days: number): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dayKey) || !Number.isInteger(days)) throw new RangeError("Expected a YYYY-MM-DD day key and whole-number day offset");
+  const date = new Date(`${dayKey}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== dayKey) throw new RangeError(`Invalid day key: ${dayKey}`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function resolveLocalDateTime(year: number, month: number, day: number, time: string, timeZone: string): Date {
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new RangeError("Time must use HH:mm format");
   if (!isValidTimeZone(timeZone)) throw new RangeError(`Invalid IANA time zone: ${timeZone}`);
 
   const [hour, minute] = time.split(":").map(Number);
-  const localDate = zonedParts(date, timeZone);
-  const localAsUtc = Date.UTC(localDate.year, localDate.month - 1, localDate.day, hour, minute);
+  const localAsUtc = Date.UTC(year, month - 1, day, hour, minute);
   const offsets = new Set<number>();
   for (let hours = -48; hours <= 48; hours += 3) offsets.add(offsetAt(localAsUtc + hours * 60 * 60_000, timeZone));
 
   const candidates = [...offsets].map((offset) => localAsUtc - offset * 60_000);
   const exact = candidates.filter((candidate) => {
     const candidateParts = zonedParts(candidate, timeZone);
-    return candidateParts.year === localDate.year
-      && candidateParts.month === localDate.month
-      && candidateParts.day === localDate.day
+    return candidateParts.year === year
+      && candidateParts.month === month
+      && candidateParts.day === day
       && candidateParts.hour === hour
       && candidateParts.minute === minute;
   }).sort((a, b) => a - b);
@@ -94,4 +100,17 @@ export function localTimeToInstant(date: Date, time: string, timeZone: string): 
   }
 
   throw new RangeError(`Could not resolve ${time} in ${timeZone}`);
+}
+
+export function localTimeToInstant(date: Date, time: string, timeZone: string): Date {
+  if (Number.isNaN(date.getTime())) throw new RangeError("Invalid date");
+  const localDate = zonedParts(date, timeZone);
+  return resolveLocalDateTime(localDate.year, localDate.month, localDate.day, time, timeZone);
+}
+
+export function localDateTimeToInstant(dayKey: string, time: string, timeZone: string): Date {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dayKey)) throw new RangeError("Day must use YYYY-MM-DD format");
+  const date = new Date(`${dayKey}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== dayKey) throw new RangeError(`Invalid day key: ${dayKey}`);
+  return resolveLocalDateTime(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate(), time, timeZone);
 }
