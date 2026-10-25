@@ -1,20 +1,14 @@
 import { newId } from "@/data/seed";
+import { localTimeToInstant } from "@/lib/date-time";
 import { recommendNext } from "@/lib/scheduler";
 import type { AppState, CalendarBlock, ScheduleRevision } from "@/types/nextwise";
-
-function atLocalTime(date: Date, time: string): Date {
-  const [hour, minute] = time.split(":").map(Number);
-  const value = new Date(date);
-  value.setHours(hour, minute, 0, 0);
-  return value;
-}
 
 export function rebuildPlan(state: AppState, trigger: string, now = new Date()): ScheduleRevision {
   const previousPlan = state.blocks;
   const protectedBlocks = previousPlan.filter((block) => block.kind !== "flexible" || block.locked);
   const movable = previousPlan.filter((block) => block.kind === "flexible" && !block.locked);
-  const dayEnd = atLocalTime(now, state.preferences.workEnd);
-  let cursor = new Date(Math.max(now.getTime(), atLocalTime(now, state.preferences.workStart).getTime()));
+  const dayEnd = localTimeToInstant(now, state.preferences.workEnd, state.preferences.timezone);
+  let cursor = new Date(Math.max(now.getTime(), localTimeToInstant(now, state.preferences.workStart, state.preferences.timezone).getTime()));
   const durationCap = Math.min(state.preferences.availableMinutes, Math.max(0, Math.floor((dayEnd.getTime() - cursor.getTime()) / 60_000)));
   let scheduled = 0;
   const updated: CalendarBlock[] = [...protectedBlocks];
