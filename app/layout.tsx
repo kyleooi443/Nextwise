@@ -3,6 +3,7 @@ import { AppProvider } from "@/components/app-provider";
 import { AppShell } from "@/components/app-shell";
 import "./globals.css";
 import "./settings-theme.css";
+import "./insights-theme.css";
 
 export const metadata: Metadata = {
   title: "NEXTWISE — Stop planning. Start doing.",
