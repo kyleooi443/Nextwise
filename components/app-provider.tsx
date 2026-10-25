@@ -105,10 +105,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }), []);
   const setPreferences = useCallback((updates: Partial<UserPreferences>) => setState((current) => {
     const preferences = { ...current.preferences, ...updates };
-    const availabilityChanged = preferences.availableMinutes !== current.preferences.availableMinutes || preferences.workStart !== current.preferences.workStart || preferences.workEnd !== current.preferences.workEnd;
+    const availabilityChanged = preferences.availableMinutes !== current.preferences.availableMinutes
+      || preferences.workStart !== current.preferences.workStart
+      || preferences.workEnd !== current.preferences.workEnd
+      || preferences.timezone !== current.preferences.timezone
+      || preferences.energy !== current.preferences.energy;
     const base = { ...current, preferences };
     if (!availabilityChanged) return base;
-    const revision = rebuildPlan(base, "availability changed");
+    const revision = rebuildPlan(base, "schedule preferences changed");
     return { ...base, blocks: revision.updatedPlan, revisions: [revision, ...base.revisions] };
   }), []);
   const setSelectedTask = useCallback((id: string) => setState((current) => ({ ...current, selectedTaskId: id })), []);
