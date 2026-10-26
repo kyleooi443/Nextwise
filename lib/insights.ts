@@ -17,7 +17,6 @@ export type InsightReport = {
   eligibleSampleCount: number;
   suggestions: InsightSuggestion[];
 };
-export type EvidenceInsight = { title: string; detail: string; sample: string };
 
 const OUTCOMES: FocusOutcome[] = ["completed", "partial", "blocked", "skipped"];
 const REFLECTIONS = [
@@ -103,10 +102,3 @@ export function getDailyReflection(now: Date, timeZone: string): { text: string;
   return { text: REFLECTIONS[dayNumber % REFLECTIONS.length], dayKey };
 }
 
-// Retained until the Insights page switches to the range-based report.
-export function deriveInsights(state: AppState): EvidenceInsight[] {
-  const sessions = state.sessions.filter((session) => session.endedAt && session.outcome && session.outcome !== "skipped" && session.actualMinutes !== undefined);
-  if (sessions.length < 5) return [];
-  const average = Math.round(sessions.reduce((sum, session) => sum + (session.actualMinutes ?? 0), 0) / sessions.length);
-  return [{ title: "Your focus sessions", detail: `Your last ${sessions.length} recorded sessions averaged ${average} minutes.`, sample: `${sessions.length} sessions` }];
-}

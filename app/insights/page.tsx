@@ -19,25 +19,24 @@ function durationLabel(minutes?: number) {
 
 function FocusChart({ days, rangeDays, totalMinutes }: { days: InsightDay[]; rangeDays: 7 | 30; totalMinutes: number }) {
   const max = Math.max(15, Math.ceil(Math.max(...days.map((day) => day.minutes), 0) / 15) * 15);
-  const y = (value: number) => 172 - (value / max) * 142;
-  const slot = 640 / days.length;
-  const barWidth = Math.min(rangeDays === 7 ? 44 : 13, slot * 0.58);
   const labelEvery = rangeDays === 7 ? 1 : 5;
   const values = days.map((day) => `${day.dateKey}: ${day.minutes} minutes across ${day.sessionCount} sessions`).join("; ");
   return <section className="insights-chart surface" aria-labelledby="focus-chart-title">
     <div className="insights-chart-head"><div><span className="insights-chart-icon"><Clock3 size={16} /></span><div><h2 id="focus-chart-title">Focus time by day</h2><p>Actual minutes from ended focus sessions</p></div></div><b>{durationLabel(totalMinutes)}</b></div>
     {totalMinutes === 0 && <p className="insights-chart-empty">No focus minutes recorded in this range. The daily baseline is shown below. <Link href="/focus">Start a focus session</Link></p>}
-    <div className="insights-svg-wrap"><svg viewBox="0 0 700 220" role="img" aria-labelledby="focus-svg-title focus-svg-desc" preserveAspectRatio="none">
-      <title id="focus-svg-title">Daily focus minutes</title><desc id="focus-svg-desc">{values}</desc>
-      {[0, .5, 1].map((fraction) => <g key={fraction}><line x1="42" x2="684" y1={172 - 142 * fraction} y2={172 - 142 * fraction} className="insights-grid-line" /><text x="35" y={176 - 142 * fraction} textAnchor="end" className="insights-axis-label">{Math.round(max * fraction)}</text></g>)}
-      {days.map((day, index) => {
-        const x = 44 + index * slot + (slot - barWidth) / 2;
-        const barHeight = day.minutes ? Math.max(2, 172 - y(day.minutes)) : 0;
-        const showTick = rangeDays === 7 || index % labelEvery === 0 || index === days.length - 1;
-        const tick = rangeDays === 7 ? day.label.slice(0, 3) : `${day.dateKey.slice(5, 7)}/${day.dateKey.slice(8)}`;
-        return <g key={day.dateKey}><rect className="insights-bar" x={x} y={172 - barHeight} width={barWidth} height={barHeight} rx="3"><title>{`${day.dateKey}: ${day.minutes} min · ${day.sessionCount} ${day.sessionCount === 1 ? "session" : "sessions"}`}</title></rect>{showTick && <text x={x + barWidth / 2} y="196" textAnchor="middle" className="insights-day-label">{tick}</text>}</g>;
-      })}
-    </svg></div>
+    <div className="focus-chart-plot" role="img" aria-label={`Daily focus minutes. Scale is zero to ${max} minutes. ${values}`}>
+      <div className="focus-chart-axis" aria-hidden="true"><span>{max}</span><span>{Math.round(max / 2)}</span><span>0</span></div>
+      <div className="focus-chart-bars" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}>
+        {days.map((day, index) => {
+          const showTick = rangeDays === 7 || index % labelEvery === 0 || index === days.length - 1;
+          const tick = rangeDays === 7 ? day.label.slice(0, 3) : `${Number(day.dateKey.slice(5, 7))}/${Number(day.dateKey.slice(8))}`;
+          return <div className="focus-chart-day" key={day.dateKey} title={`${day.dateKey}: ${day.minutes} min · ${day.sessionCount} ${day.sessionCount === 1 ? "session" : "sessions"}`}>
+            <div className="focus-chart-track"><i className={day.minutes ? "focus-chart-bar" : "focus-chart-zero"} style={{ height: `${day.minutes ? Math.max(2, day.minutes / max * 100) : 1}%` }} /></div>
+            <span className="focus-chart-tick">{showTick ? tick : ""}</span>
+          </div>;
+        })}
+      </div>
+    </div>
     <ul className="sr-only">{days.map((day) => <li key={day.dateKey}>{day.dateKey}: {day.minutes} focus minutes from {day.sessionCount} sessions</li>)}</ul>
   </section>;
 }
@@ -79,7 +78,7 @@ export default function InsightsPage() {
       <article className="insights-metric surface"><span className="insights-metric-icon metric-focus"><Clock3 size={16} /></span><small>Focus time</small><b>{durationLabel(report.metrics.focusMinutes)}</b><span>actual recorded minutes</span></article>
       <article className="insights-metric surface"><span className="insights-metric-icon metric-sessions"><BarChart3 size={16} /></span><small>Ended sessions</small><b>{report.metrics.endedSessions}</b><span>in this date range</span></article>
       <article className="insights-metric surface"><span className="insights-metric-icon metric-complete"><Check size={16} /></span><small>Completed</small><b>{report.metrics.completedSessions}</b><span>sessions marked complete</span></article>
-      <article className="insights-metric surface"><span className="insights-metric-icon metric-average"><Target size={16} /></span><small>Average session</small><b>{durationLabel(report.metrics.averageActualMinutes)}</b><span>{report.metrics.averageActualMinutes === undefined ? "no duration recorded" : "per session with actual time"}</span></article>
+      <article className="insights-metric surface"><span className="insights-metric-icon metric-average"><Target size={16} /></span><small>Average session</small><b>{report.metrics.averageActualMinutes === undefined ? "—" : durationLabel(report.metrics.averageActualMinutes)}</b><span>{report.metrics.averageActualMinutes === undefined ? "no duration recorded" : "per session with actual time"}</span></article>
     </div>
     <div className="insights-charts"><FocusChart days={report.focusByDay} rangeDays={rangeDays} totalMinutes={report.metrics.focusMinutes} /><OutcomeChart report={report} /></div>
     <section className="insights-reflection surface"><span className="reflection-icon"><Quote size={18} /></span><div><span className="eyebrow">A thought for today</span><blockquote>{reflection.text}</blockquote><small>{reflection.dayKey}</small></div></section>

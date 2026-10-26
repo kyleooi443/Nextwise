@@ -11,6 +11,7 @@ export default function SettingsPage() {
   const [draft, setDraft] = useState<UserPreferences | null>(null);
   const [saved, setSaved] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
+  const [activeSection, setActiveSection] = useState("profile");
   const values = draft ?? state.preferences;
   const errors = useMemo(() => validatePreferences(values), [values]);
   const dirty = draft !== null && Object.keys(draft).some((key) => draft[key as keyof UserPreferences] !== state.preferences[key as keyof UserPreferences]);
@@ -18,7 +19,7 @@ export default function SettingsPage() {
     event.preventDefault();
     setShowErrors(true);
     if (!dirty || Object.keys(errors).length) return;
-    setPreferences(values);
+    setPreferences({ ...values, name: values.name.trim() });
     setDraft(null);
     setShowErrors(false);
     setSaved(true);
@@ -27,13 +28,14 @@ export default function SettingsPage() {
   function update<K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) {
     setDraft((current) => ({ ...(current ?? state.preferences), [key]: value }));
     setSaved(false);
+    setShowErrors(true);
   }
   function fieldError(key: keyof typeof errors) { return showErrors ? errors[key] : undefined; }
   if (!hydrated) return <div className="loading-line">Loading settings…</div>;
   return <div className="settings-screen">
     <div className="page-heading"><div><div className="date-line">Your workspace</div><h1>Settings</h1><p>Set the context NEXTWISE uses to make practical recommendations.</p></div></div>
     <form className="settings-layout" onSubmit={submit} noValidate>
-      <nav className="settings-nav" aria-label="Settings sections"><a href="#profile" className="selected"><Settings2 size={15} /> Personal</a><a href="#schedule">Availability</a><a href="#display">Display</a><a href="#data">Data</a></nav>
+      <nav className="settings-nav" aria-label="Settings sections"><a href="#profile" className={activeSection === "profile" ? "selected" : ""} aria-current={activeSection === "profile" ? "location" : undefined} onClick={() => setActiveSection("profile")}><Settings2 size={15} /> Personal</a><a href="#schedule" className={activeSection === "schedule" ? "selected" : ""} aria-current={activeSection === "schedule" ? "location" : undefined} onClick={() => setActiveSection("schedule")}>Availability</a><a href="#display" className={activeSection === "display" ? "selected" : ""} aria-current={activeSection === "display" ? "location" : undefined} onClick={() => setActiveSection("display")}>Display</a><a href="#data" className={activeSection === "data" ? "selected" : ""} aria-current={activeSection === "data" ? "location" : undefined} onClick={() => setActiveSection("data")}>Data</a></nav>
       <div className="settings-content">
         <section className="settings-section surface" id="profile"><div className="settings-section-head"><div><h2>Personal details</h2><p>Used to personalize your workspace greeting.</p></div></div>
           <label className="settings-field" htmlFor="settings-name">Name<input id="settings-name" className="field" value={values.name} onChange={(event) => update("name", event.target.value)} aria-invalid={Boolean(fieldError("name"))} aria-describedby={fieldError("name") ? "settings-name-error" : undefined} />{fieldError("name") && <small className="field-error" id="settings-name-error">{fieldError("name")}</small>}</label>
