@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { ArrowRight, CalendarDays, Check, ChevronRight, Circle, Clock3, Eye, EyeOff, MoreHorizontal, Play, RefreshCw, SlidersHorizontal, TriangleAlert, Undo2, Zap } from "lucide-react";
 import { useNextwise } from "@/components/app-provider";
 import { LevelTag } from "@/components/level-tag";
+import { deriveTodayActivity } from "@/lib/today";
 import { formatInTimeZone } from "@/lib/date-time";
 import { formatRelative, recommendNext } from "@/lib/scheduler";
 import type { Task } from "@/types/nextwise";
@@ -27,6 +28,7 @@ export function TodayScreen() {
   const [timelineOpen, setTimelineOpen] = useState(true);
   const now = new Date();
   const timeZone = state.preferences.timezone;
+  const todayActivity = deriveTodayActivity(state, now);
   const dateText = formatInTimeZone(now, timeZone, { weekday: "short", month: "short", day: "numeric" });
   const localHour = Number(new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", hourCycle: "h23" }).format(now));
   const result = useMemo(() => recommendNext(state), [state]);
@@ -37,7 +39,7 @@ export function TodayScreen() {
   const name = state.preferences.name.split(" ")[0] || "there";
   const completed = state.tasks.filter((item) => item.status === "completed").length;
   const total = state.tasks.length;
-  const completedMinutes = state.sessions.reduce((sum, session) => sum + (session.actualMinutes ?? 0), 0);
+  const focusMinutesToday = todayActivity.focusMinutes;
   const openMinutes = state.preferences.availableMinutes;
 
   function start(minutes = recommendation?.durationMinutes ?? 25, chosenTask: Task | undefined = task) {
@@ -95,17 +97,17 @@ export function TodayScreen() {
 
         <div className="today-summary-grid">
           <section className="summary-panel surface"><div className="summary-panel-head"><h3>Today’s progress</h3><span>{total ? Math.round(completed / total * 100) : 0}%</span></div><div className="progress-track"><i style={{ width: `${total ? completed / total * 100 : 0}%` }} /></div><div className="progress-foot"><span><b>{completed}</b> completed</span><span><b>{state.tasks.filter((item) => item.status === "in_progress").length}</b> in progress</span><span><b>{state.tasks.filter((item) => item.status !== "completed").length}</b> remaining</span></div></section>
-          <section className="summary-panel focus-balance surface"><div className="summary-panel-head"><h3>Focus time</h3><span className="muted">Recorded today</span></div><div className="focus-time"><Clock3 size={20} /><b>{Math.floor(completedMinutes / 60)}h {completedMinutes % 60}m</b></div><p>{completedMinutes ? "Based on your completed focus sessions." : "Your session time will appear here as you work."}</p></section>
+          <section className="summary-panel focus-balance surface"><div className="summary-panel-head"><h3>Focus time</h3><span className="muted">Recorded today</span></div><div className="focus-time"><Clock3 size={20} /><b>{Math.floor(focusMinutesToday / 60)}h {focusMinutesToday % 60}m</b></div><p>{focusMinutesToday ? "Based on ended focus sessions today." : "Your session time will appear here as you work."}</p></section>
           <section className="summary-panel availability-panel surface"><div className="summary-panel-head"><h3>Available now</h3><MoreHorizontal size={16} /></div><div className="availability-value">{openMinutes}<small>min</small></div><p>Time available for your next focus block</p></section>
         </div>
       </section>
 
       {state.preferences.contextPanelOpen && <aside className="today-context">
         <section className="context-section schedule-panel surface">
-          <div className="context-head"><div><h2>Today’s schedule</h2><span>{state.blocks.filter((block) => block.kind !== "flexible").length} commitments</span></div><Link href="/timeline">Full timeline <ArrowRight size={12} /></Link></div>
+          <div className="context-head"><div><h2>Today’s schedule</h2><span>{todayActivity.blocks.filter((block) => block.kind !== "flexible").length} commitments</span></div><Link href="/timeline">Full timeline <ArrowRight size={12} /></Link></div>
           <div className="time-checkin"><div className="control-label">How much time do you have?</div><div className="segmented-control">{[{ label: "15m", value: 15 }, { label: "30m", value: 30 }, { label: "1h", value: 60 }, { label: "2h+", value: 120 }].map((option) => <button key={option.value} className={state.preferences.availableMinutes === option.value ? "selected" : ""} onClick={() => setPreferences({ availableMinutes: option.value })}>{option.label}</button>)}</div><div className="control-label energy-label">Energy</div><div className="energy-control">{(["low", "medium", "high"] as const).map((energy) => <button className={state.preferences.energy === energy ? "selected" : ""} onClick={() => setPreferences({ energy })} key={energy}>{energy}</button>)}</div></div>
           <div className="timeline-head"><h3>Adaptive timeline</h3><button className="icon-button" aria-label={timelineOpen ? "Collapse timeline" : "Expand timeline"} onClick={() => setTimelineOpen((open) => !open)}>{timelineOpen ? <EyeOff size={14} /> : <Eye size={14} />}</button></div>
-          {timelineOpen && <div className="mini-timeline">{[...state.blocks].sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()).slice(0, 7).map((block) => <div className={`mini-event event-${block.kind}`} key={block.id}><div className="mini-event-time mono">{shortTime(block.startAt, timeZone)}</div><div className="mini-event-rule" /><button className="mini-event-body" onClick={() => block.taskId && showTask(block.taskId)}><b>{block.title}</b><span>{shortTime(block.startAt, timeZone)} – {shortTime(block.endAt, timeZone)}{block.locked ? " · Fixed" : ""}</span></button></div>)}</div>}
+          {timelineOpen && <div className="mini-timeline">{[...todayActivity.blocks].sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()).slice(0, 7).map((block) => <div className={`mini-event event-${block.kind}`} key={block.id}><div className="mini-event-time mono">{shortTime(block.startAt, timeZone)}</div><div className="mini-event-rule" /><button className="mini-event-body" onClick={() => block.taskId && showTask(block.taskId)}><b>{block.title}</b><span>{shortTime(block.startAt, timeZone)} – {shortTime(block.endAt, timeZone)}{block.locked ? " · Fixed" : ""}</span></button></div>)}</div>}
           <div className="context-footer"><button className="button" onClick={() => router.push("/timeline")}><CalendarDays size={14} /> Adjust timeline</button></div>
         </section>
 

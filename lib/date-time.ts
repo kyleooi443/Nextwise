@@ -91,7 +91,9 @@ function resolveLocalDateTime(year: number, month: number, day: number, time: st
       let high = localAsUtc - oldOffset * 60_000;
       if (low >= high || offsetAt(low, timeZone) !== oldOffset || offsetAt(high, timeZone) !== newOffset) continue;
       while (high - low > 1000) {
-        const middle = Math.floor((low + high) / 2);
+        // Offset lookup has whole-second precision. Keep every probe aligned
+        // to a second so the final upper bound is the transition's exact start.
+        const middle = Math.floor((low + high) / 2000) * 1000;
         if (offsetAt(middle, timeZone) === newOffset) high = middle;
         else low = middle;
       }
