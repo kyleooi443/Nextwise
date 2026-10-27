@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import { AppProvider } from "@/components/app-provider";
-import { AppShell } from "@/components/app-shell";
 import "./globals.css";
 import "./settings-theme.css";
 import "./insights-theme.css";
+import "./brand-theme.css";
 
 export const metadata: Metadata = {
   title: "NEXTWISE — Stop planning. Start doing.",
@@ -14,9 +13,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body>
-        <AppProvider>
-          <AppShell>{children}</AppShell>
-        </AppProvider>
+        {children}
       </body>
     </html>
   );

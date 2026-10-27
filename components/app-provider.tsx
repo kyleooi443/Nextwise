@@ -1,12 +1,16 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { workspaceStorageKey } from "@/lib/auth/workspace";
 import { createSeedState, newId } from "@/data/seed";
 import { isValidTimeZone } from "@/lib/date-time";
 import { rebuildPlan, undoRevision } from "@/lib/reschedule";
 import type { AppState, FocusOutcome, Task, TaskDraft, UserPreferences } from "@/types/nextwise";
 
-const STORAGE_KEY = "nextwise-state-v1";
+function emptyWorkspace(name = "My workspace"): AppState {
+  const seed = createSeedState();
+  return { ...seed, tasks: [], blocks: [], sessions: [], revisions: [], preferences: { ...seed.preferences, name } };
+}
 
 type AppContextValue = {
   state: AppState;
@@ -33,12 +37,12 @@ type AppContextValue = {
 
 const AppContext = createContext<AppContextValue | null>(null);
 
-function readStoredState(): { state: AppState; warning: boolean } {
+function readStoredState(storageKey: string, name: string): { state: AppState; warning: boolean } {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { state: createSeedState(), warning: false };
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) return { state: emptyWorkspace(name), warning: false };
     const parsed = JSON.parse(raw) as AppState;
-    if (parsed.version !== 1 || !Array.isArray(parsed.tasks) || !Array.isArray(parsed.blocks) || !parsed.preferences || typeof parsed.preferences !== "object") return { state: createSeedState(), warning: true };
+    if (parsed.version !== 1 || !Array.isArray(parsed.tasks) || !Array.isArray(parsed.blocks) || !parsed.preferences || typeof parsed.preferences !== "object") return { state: emptyWorkspace(name), warning: true };
     const migrated: AppState = {
       ...parsed,
       tasks: parsed.tasks.map((task) => ({ ...task, splittable: task.splittable ?? true, dependencies: task.dependencies ?? [], dismissals: task.dismissals ?? 0 })),
@@ -55,34 +59,35 @@ function readStoredState(): { state: AppState; warning: boolean } {
     };
     return { state: migrated, warning: false };
   } catch {
-    return { state: createSeedState(), warning: true };
+    return { state: emptyWorkspace(name), warning: true };
   }
 }
 
-export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AppState>(() => createSeedState());
+export function AppProvider({ children, userId, displayName }: { children: React.ReactNode; userId: string; displayName: string }) {
+  const storageKey = workspaceStorageKey(userId);
+  const [state, setState] = useState<AppState>(() => emptyWorkspace(displayName));
   const [hydrated, setHydrated] = useState(false);
   const [storageWarning, setStorageWarning] = useState(false);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
-      const stored = readStoredState();
+      const stored = readStoredState(storageKey, displayName);
       setState(stored.state);
       setStorageWarning(stored.warning);
       setHydrated(true);
     }, 0);
     return () => window.clearTimeout(id);
-  }, []);
+  }, [storageKey, displayName]);
 
   useEffect(() => {
     if (!hydrated) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      window.localStorage.setItem(storageKey, JSON.stringify(state));
       window.setTimeout(() => setStorageWarning(false), 0);
     } catch {
       window.setTimeout(() => setStorageWarning(true), 0);
     }
-  }, [state, hydrated]);
+  }, [state, hydrated, storageKey]);
 
   useEffect(() => {
     if (!hydrated) return;

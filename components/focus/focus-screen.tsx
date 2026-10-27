@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BrandSymbol } from "@/components/brand-symbol";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Clock3, LockKeyhole, Pause, Play, Shield, SkipForward, X } from "lucide-react";
@@ -76,7 +77,7 @@ export function FocusScreen() {
 
   const elapsedPercent = Math.min(100, Math.max(0, ((activeSession.plannedMinutes * 60 - secondsLeft) / (activeSession.plannedMinutes * 60)) * 100));
   return <div className="focus-screen">
-    <div className="focus-toolbar"><button className="focus-exit" onClick={() => router.push("/today")}><X size={17} /> Exit focus</button><span className="focus-wordmark"><span className="brand-mark"><i /><i /></span>NEXTWISE</span><button className="focus-toolbar-action" onClick={() => setShowPicker((value) => !value)}><Clock3 size={14} /> Adjust</button></div>
+    <div className="focus-toolbar"><button className="focus-exit" onClick={() => router.push("/today")}><X size={17} /> Exit focus</button><span className="focus-wordmark"><BrandSymbol />nextwise</span><button className="focus-toolbar-action" onClick={() => setShowPicker((value) => !value)}><Clock3 size={14} /> Adjust</button></div>
     {showPicker && <div className="focus-adjust"><span>Set session length</span><div>{[5, 15, 25, 50].map((minutes) => <button key={minutes} onClick={() => { adjustFocus(minutes); setShowPicker(false); }}>{minutes} min</button>)}<label><input aria-label="Custom focus minutes" type="number" min="1" max="180" value={customMinutes} onChange={(event) => setCustomMinutes(Number(event.target.value))} /><button onClick={() => { adjustFocus(customMinutes); setShowPicker(false); }}>Set</button></label></div></div>}
     <main className="focus-body">
       <div className="focus-task-area"><span className="focus-level"><LevelTag level={activeTask.reasoningLevel} /></span><h1>{activeTask.title}</h1><p>{activeTask.microStep}</p>

@@ -1,5 +1,7 @@
 "use client";
 
+import { SignOutButton } from "@/components/auth/sign-out-button";
+
 import { FormEvent, useMemo, useState } from "react";
 import { Check, RotateCcw, Save, Settings2 } from "lucide-react";
 import { useNextwise } from "@/components/app-provider";
@@ -47,7 +49,7 @@ export default function SettingsPage() {
           <label className="settings-field" htmlFor="settings-energy">Default energy<select id="settings-energy" className="field" value={values.energy} onChange={(event) => update("energy", event.target.value as UserPreferences["energy"])}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
         </section>
         <section className="settings-section surface" id="display"><div className="settings-section-head"><div><h2>Display</h2><p>Choose a comfortable reading mode.</p></div></div><label className="settings-field" htmlFor="settings-theme">Theme<select id="settings-theme" className="field" value={values.theme} onChange={(event) => update("theme", event.target.value as UserPreferences["theme"])}><option value="system">Match device</option><option value="light">Light</option><option value="dark">Dark</option></select></label><label className="settings-checkbox"><input type="checkbox" checked={values.contextPanelOpen} onChange={(event) => update("contextPanelOpen", event.target.checked)} /><span><b>Show context panels</b><small>Keep schedule and deadline details alongside Today.</small></span></label></section>
-        <section className="settings-section surface" id="data"><div className="settings-section-head"><div><h2>Local demo data</h2><p>Your tasks and preferences are stored in this browser only.</p></div></div><div className="data-status"><span className={`status-dot ${storageWarning ? "warn" : ""}`} /><span>{storageWarning ? "Browser storage is unavailable" : "Saved on this device"}</span></div><button type="button" className="button" onClick={() => { if (window.confirm("Reset tasks, sessions, and preferences to the NEXTWISE demo data?")) { resetDemo(); setDraft(null); setShowErrors(false); setSaved(false); } }}><RotateCcw size={14} /> Reset demo data</button></section>
+        <section className="settings-section surface" id="data"><div className="settings-section-head"><div><h2>Local demo data</h2><p>Your tasks and preferences are stored in this browser only.</p></div></div><div className="data-status"><span className={`status-dot ${storageWarning ? "warn" : ""}`} /><span>{storageWarning ? "Browser storage is unavailable" : "Saved on this device"}</span></div><button type="button" className="button" onClick={() => { if (window.confirm("Reset tasks, sessions, and preferences to the NEXTWISE demo data?")) { resetDemo(); setDraft(null); setShowErrors(false); setSaved(false); } }}><RotateCcw size={14} /> Reset demo data</button><div className="settings-signout"><SignOutButton /></div></section>
         <div className="settings-save-row"><span role="status" aria-live="polite">{saved ? <><Check size={14} /> Preferences saved</> : dirty ? "Unsaved changes" : "All changes are saved."}</span><button className="button button-primary" type="submit" disabled={!dirty || Object.keys(errors).length > 0}><Save size={14} /> Save changes</button></div>
       </div>
     </form>

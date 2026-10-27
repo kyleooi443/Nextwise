@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { SignOutButton } from "@/components/auth/sign-out-button";
+import { BrandSymbol } from "@/components/brand-symbol";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Bell, CalendarDays, ChartNoAxesColumnIncreasing, CheckSquare2, ChevronDown, CircleHelp, Command, Focus, Inbox, LayoutDashboard, ListTodo, Menu, Search, Settings, UserRound, X } from "lucide-react";
@@ -19,7 +21,7 @@ const items: { label: string; href: string; key: ViewKey; icon: typeof LayoutDas
 const mobileItems = items.filter((item) => ["today", "inbox", "timeline", "review"].includes(item.key));
 
 function Brand() {
-  return <Link href="/today" className="brand" aria-label="NEXTWISE home"><span className="brand-mark"><i /><i /></span><span>NEXTWISE</span></Link>;
+  return <Link href="/today" className="brand" aria-label="nextwise home"><BrandSymbol /><span>nextwise</span></Link>;
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -59,9 +61,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           {items.map(({ label, href, key, icon: Icon }) => <Link key={key} href={href} className={`nav-link ${active === key ? "active" : ""}`} aria-current={active === key ? "page" : undefined}><Icon size={17} strokeWidth={1.8} /><span>{label}</span>{key === "inbox" && <small>{state.tasks.filter((task) => task.status === "todo").length}</small>}</Link>)}
         </nav>
         <div className="sidebar-foot">
-          <div className="side-quote"><span className="side-quote-mark" aria-hidden="true"><span className="brand-mark"><i /><i /></span></span><p>Stop planning.<br />Start doing.</p><span className="side-quote-rule" /></div>
+          <div className="side-quote"><span className="side-quote-mark" aria-hidden="true"><BrandSymbol /></span><p>Stop planning.<br />Start doing.</p><span className="side-quote-rule" /></div>
           <button className="profile-row" onClick={() => setProfileOpen((value) => !value)} aria-expanded={profileOpen}><span className="avatar">{state.preferences.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}</span><span className="profile-name"><b>{state.preferences.name}</b><small>Personal workspace</small></span><ChevronDown size={15} /></button>
-          {profileOpen && <div className="profile-menu"><Link href="/settings" onClick={() => setProfileOpen(false)}><UserRound size={15} /> Profile & preferences</Link><button onClick={() => { resetDemo(); setProfileOpen(false); }}><ListTodo size={15} /> Reset demo data</button></div>}
+          {profileOpen && <div className="profile-menu"><Link href="/settings" onClick={() => setProfileOpen(false)}><UserRound size={15} /> Profile & preferences</Link><button onClick={() => { resetDemo(); setProfileOpen(false); }}><ListTodo size={15} /> Reset demo data</button><SignOutButton /></div>}
         </div>
       </aside>
 

@@ -8,7 +8,7 @@ import { addDaysToDayKey, dayKeyInTimeZone, localDateTimeToInstant } from "@/lib
 import { deriveInsightReport, getDailyReflection, type InsightDay, type InsightReport } from "@/lib/insights";
 
 const OUTCOME_LABELS = ["completed", "partial", "blocked", "skipped"] as const;
-const OUTCOME_COLORS: Record<(typeof OUTCOME_LABELS)[number], string> = { completed: "#2a9573", partial: "#d68a36", blocked: "#c94d4d", skipped: "#8b929c" };
+const OUTCOME_COLORS: Record<(typeof OUTCOME_LABELS)[number], string> = { completed: "var(--chart-completed)", partial: "var(--chart-partial)", blocked: "var(--chart-blocked)", skipped: "var(--chart-skipped)" };
 
 function durationLabel(minutes?: number) {
   if (minutes === undefined || !minutes) return "0 min";

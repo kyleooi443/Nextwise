@@ -3,3 +3,7 @@ node_modules/
 .playwright-mcp/
 nextwise-*.png
 out/
+
+.env*
+!.env.example
+*.tsbuildinfo

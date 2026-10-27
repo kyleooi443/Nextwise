@@ -30,3 +30,10 @@ Tasks and preferences stay in the current browser's local storage. Authenticatio
 npm run lint
 npm run build
 ```
+
+## Authentication and deployment
+
+Login/signup use Supabase Auth when configured. See [authentication setup](docs/authentication.md)
+and [GitHub, Supabase and Vercel deployment steps](docs/deployment.md).
+Workspace content stays in per-account browser storage; Supabase data sync is not
+implemented yet.
