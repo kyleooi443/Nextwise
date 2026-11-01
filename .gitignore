@@ -1,1 +1,10 @@
 .obsidian/workspace.json
+node_modules/
+.next/
+.playwright-mcp/
+nextwise-*.png
+out/
+
+.env*
+!.env.example
+*.tsbuildinfo
