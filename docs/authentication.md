@@ -7,10 +7,10 @@
 notice and disabled submit button. There is no mock success or authentication
 bypass. Protected workspace URLs redirect to login when signed out or unconfigured.
 
-## Enable real accounts
+## Local configuration
 
-1. Copy `.env.example` to `.env.local`. Fill in the Supabase project URL and
-   publishable key from your project's Connect dialog. Do not use a service-role key.
+1. Create `.env.local` with the Supabase project URL and publishable key from
+   your project's Connect dialog. Do not use a service-role key.
 2. Set `AUTH_SITE_URL` to the exact origin (local: `http://localhost:3000`).
    Production requires HTTPS. Rebuild/restart after changing environment variables.
 3. In Supabase Auth, enable email/password and **Confirm email**. Set the provider
@@ -28,10 +28,10 @@ bypass. Protected workspace URLs redirect to login when signed out or unconfigur
    `UPSTASH_REDIS_REST_TOKEN`. Generate `AUTH_RATE_LIMIT_SECRET` with
    `openssl rand -hex 32`. These values are server-only.
 7. Verify signup, confirmation, logout, login, recovery, and expired-link handling
-   against your project before deployment. No live project was connected during
-   implementation; live email, cookies and multi-account flows remain to be verified.
+   against the local environment. The production deployment is connected; check
+   its live email and account flows after each auth configuration change.
 
-Default confirmation links use PKCE and must be opened in the browser that began
+Default confirmation links use PKCE and should be opened in the browser that began
 the flow. For cross-device links, configure custom SMTP/email templates to point
 at `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup` for signup
 and the same URL with `type=recovery` for recovery. The confirm endpoint only
@@ -81,6 +81,12 @@ Run `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/auth/securit
 and `npm run lint && npm run build`. The auth tests cover invalid input, safe
 redirects, same-origin checks, concurrent limits, expiry, failed Redis responses,
 production fail-closed behavior, and distinct account storage keys.
+
+For production troubleshooting, verify the Vercel Production environment has
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+`AUTH_SITE_URL`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, and
+`AUTH_RATE_LIMIT_SECRET`. Redeploy after changing values. Use the exact HTTPS
+production origin for `AUTH_SITE_URL`; localhost belongs only in local setup.
 
 References: [Supabase SSR](https://supabase.com/docs/guides/auth/server-side/creating-a-client),
 [password authentication](https://supabase.com/docs/guides/auth/passwords),

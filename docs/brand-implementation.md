@@ -1,5 +1,9 @@
 # NEXTWISE brand implementation
 
+This is a working implementation record for the deployed NEXTWISE MVP. The
+product is usable and under active development; this document tracks the brand
+work in the app and the assets that still need source material.
+
 The supplied written palette is implemented without changing routes, scheduling,
 storage, task state, focus outcomes, or insight derivation.
 
@@ -7,8 +11,8 @@ storage, task state, focus outcomes, or insight derivation.
   shared control/card treatments, typography, focus styling, mobile refinements,
   and reduced-motion support. Existing `--blue` remains a compatibility alias
   for the jade interactive role; it does not represent a blue color.
-- `app/globals.css`: existing layout preserved; repeated color literals now use
-  semantic roles. Includes pre-existing uncommitted Timeline/Review work.
+- `app/globals.css`: shared layout and repeated color literals use semantic
+  roles.
 - `app/settings-theme.css`: retains Settings layout and sticky-save clearance;
   superseded per-component dark overrides removed in favor of semantic tokens.
 - `app/insights-theme.css` and `app/insights/page.tsx`: themed charts, metrics,

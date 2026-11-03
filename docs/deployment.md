@@ -1,100 +1,65 @@
-# Deploy NEXTWISE with GitHub, Supabase and Vercel
+# Deployment
 
-The repository already has a GitHub `origin` remote on `main`. The current
-workspace still has uncommitted changes, so Vercel cannot deploy those changes
-from Git until they are committed and pushed. No Supabase project, Redis database,
-or Vercel project is connected yet.
+NEXTWISE is deployed on Vercel and connected to GitHub, Supabase Auth, and
+Upstash Redis. The production app is [nextwise-pi.vercel.app](https://nextwise-pi.vercel.app).
+The `main` branch is the production branch. Changes merged to `main` trigger a
+production deployment; other branches create previews.
 
-## 1. Prepare GitHub
+## Production configuration
 
-1. Review `git status` and `git diff`, including the new auth files and previous
-   UI work. Keep the sample insight screenshots only if you want them in the repo.
-2. Run `npm run lint`, `npm run build`, and
-   `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/auth/security.test.mjs`.
-3. Commit the reviewed files to `main` and push to the configured GitHub `origin`.
-   Do not add `.env.local`, `.env.production`, or any real secret to Git. `.env*`
-   is ignored except `.env.example`.
+Vercel Project Settings → Environment Variables should contain these values for
+**Production**. Apply the same names to Preview only if preview deployments need
+auth. Never commit secret values.
 
-## 2. Create the Supabase Auth project
+| Variable | Purpose | Exposure |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | Public |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser-safe Supabase key | Public |
+| `AUTH_SITE_URL` | Canonical production origin: `https://nextwise-pi.vercel.app` | Public |
+| `UPSTASH_REDIS_REST_URL` | Shared auth rate-limit store | Secret |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash access token | Secret |
+| `AUTH_RATE_LIMIT_SECRET` | HMAC key for rate-limit identifiers; 32+ characters | Secret |
 
-1. Create a Supabase project and keep its database password in a password manager.
-2. In **Connect**, copy the Project URL and publishable key. The browser-safe
-   publishable key is expected to use the `NEXT_PUBLIC_` prefix; never use a
-   `service_role` or secret key in this app.
-3. Under Auth providers, enable email/password and **Confirm email**. Set the
-   password minimum to 12 characters. Configure custom SMTP before inviting
-   real users; Supabase's default sender is for testing and has delivery limits.
-4. Under Auth URL configuration, set the Site URL to the eventual HTTPS production
-   domain. Allow these exact callback paths:
-   - `https://YOUR-DOMAIN/auth/callback`
-   - `https://YOUR-DOMAIN/auth/callback?next=/reset-password`
-   - `http://localhost:3000/auth/callback`
-   - `http://localhost:3000/auth/callback?next=/reset-password`
-5. For Vercel preview authentication, allow the preview callback URLs too. Supabase
-   supports a pattern like `https://*-YOUR-VERCEL-TEAM.vercel.app/**`; keep that
-   limited to your Vercel team slug. Prefer a separate Supabase staging project
-   for previews, so tests cannot touch production accounts. `VERCEL_URL` is used
-   to build the current preview's callback origin.
-6. Add the corresponding `AUTH_SITE_URL` to local `.env.local`, then test signup,
-   email confirmation, login, password recovery, reset, and logout locally.
+After changing environment variables, redeploy so the production build receives
+the new values. Enter values without quotes. Keep the Supabase service-role key
+out of this app; it uses the publishable key.
 
-## 3. Create shared rate-limit storage
+## Supabase email configuration
 
-Create an Upstash Redis database. Generate a separate HMAC key with
-`openssl rand -hex 32`. Keep both values private. App-level rate limits use these
-server-only variables:
+In Supabase Auth URL Configuration:
 
-- `UPSTASH_REDIS_REST_URL`
-- `UPSTASH_REDIS_REST_TOKEN`
-- `AUTH_RATE_LIMIT_SECRET`
+- Set **Site URL** to `https://nextwise-pi.vercel.app`.
+- Add `https://nextwise-pi.vercel.app/auth/callback` to allowed redirect URLs.
+- Add `https://nextwise-pi.vercel.app/auth/callback?next=/reset-password` for
+  recovery links.
 
-Production auth returns unavailable if shared Redis or the HMAC key is missing.
-Use separate Redis databases or namespaces for preview and production where practical.
+For local signup, also allow `http://localhost:3000/auth/callback` and
+`http://localhost:3000/auth/callback?next=/reset-password`. Production signup
+links should return to the deployed HTTPS origin. If a link points to localhost,
+check `AUTH_SITE_URL` and Supabase's Site URL, then request a new email; older
+links can expire or retain a previous redirect.
 
-## 4. Import the GitHub repository into Vercel
+Use Supabase's built-in email sender for development only. Configure custom SMTP
+before inviting real users or relying on production email delivery.
 
-1. In Vercel, choose **Add New → Project**, connect GitHub, and import
-   `kyleooi443/Nextwise`.
-2. Keep the detected Next.js framework, repository root, install command and build
-   command defaults. Production branch: `main`.
-3. Add the environment variables below to Vercel Project Settings. Select the
-   intended environment for each variable. Preview and Production values must be
-   added separately, and changes take effect on the next deployment.
+## Release checklist
 
-| Variable | Preview | Production | Secret? |
-| --- | --- | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Staging Supabase URL | Production Supabase URL | No |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Staging publishable key | Production publishable key | No |
-| `AUTH_SITE_URL` | Optional preview fallback | `https://YOUR-DOMAIN` | No |
-| `UPSTASH_REDIS_REST_URL` | Preview Redis URL | Production Redis URL | Yes |
-| `UPSTASH_REDIS_REST_TOKEN` | Preview Redis token | Production Redis token | Yes |
-| `AUTH_RATE_LIMIT_SECRET` | Preview random key | Production random key | Yes |
+1. Review `git status` and the changes intended for release.
+2. Run `npm run lint`, `npm run build`, and the auth security test command in the
+   [README](../README.md).
+3. Push or merge reviewed changes to `main`.
+4. Check the Vercel deployment result and test the deployed app: signup, email
+   confirmation, login, protected routes, signout, password recovery, and
+   rate-limit behavior.
+5. Keep `.env.local` and all secret values out of Git.
 
-Vercel supplies `VERCEL_ENV` and `VERCEL_URL` automatically. For previews, the
-app uses `https://${VERCEL_URL}` for auth callback links. `AUTH_SITE_URL` is the
-fallback for local development and the required exact HTTPS origin in production.
-
-4. Import and deploy to create a Preview deployment first. Add its generated
-   callback URL to the staging Supabase allow-list and test real email flows.
-5. Add your production domain under Vercel Project Settings → Domains. Set
-   `AUTH_SITE_URL` and Supabase Site URL to that exact HTTPS origin, add the exact
-   production callback URLs, then redeploy.
-6. Merge or push reviewed changes to `main` for the Production deployment. Test
-   login, signup, email verification, recovery, protected routes, signout, and
-   rate limiting on the actual domain.
-
-Vercel automatically creates Preview deployments for non-production Git branches
-and Production deployments for the configured production branch. You do not need
-to add a separate GitHub Actions workflow just to deploy this Next.js app.
-
-## Important product limitation
+## Product limitation
 
 Supabase currently stores authentication accounts only. Tasks, schedules, and
-preferences remain in browser storage, separated by verified user ID. There are
-no Supabase app-data tables or migrations yet, so data will not sync across
-browsers or devices. This is suitable for an authenticated local-first preview;
-complete multi-device persistence requires the separate database/RLS work in the
-production design before presenting it as a fully synced SaaS.
+preferences remain in browser storage under the verified user's account key.
+They do not sync across browsers or devices. Database tables, row-level security,
+and cloud persistence remain future work, so describe NEXTWISE as a working
+local-first MVP rather than a fully synced SaaS.
 
 ## References
 

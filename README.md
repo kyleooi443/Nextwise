@@ -1,8 +1,30 @@
 # NEXTWISE
 
-Stop planning. Start doing.
+**Stop planning. Start doing.**
 
-NEXTWISE is a decision-first productivity prototype. It uses a deterministic scoring engine to recommend one next task, explains the factors behind that choice, and revises flexible focus blocks after a missed, partial, or blocked session.
+NEXTWISE is a working, deployed productivity MVP in active development. It helps
+people choose one meaningful next task, understand why it is recommended, and
+adjust flexible focus blocks when plans change.
+
+- **Live app:** [nextwise-pi.vercel.app](https://nextwise-pi.vercel.app)
+- **Production branch:** `main`
+- **Stack:** Next.js, TypeScript, Supabase Auth, Upstash Redis, Vercel
+- **Current data model:** task and preference data stay in browser storage; they
+  do not sync between devices yet.
+
+## What works today
+
+- Today view recommends a task using deadline, importance, time fit, energy,
+  dependencies, start effort, and dismissal history.
+- Inbox supports capture, editing, dependencies, filters, completion, and date
+  phrases such as “today,” “tomorrow,” and “in 3 days.”
+- Focus sessions support pause, resume, duration changes, and completed,
+  partial, blocked, or not-started outcomes.
+- Timeline supports day and week views, fixed commitments, flexible blocks,
+  revisions, accept, and undo.
+- Reviews, evidence-based insights, editable preferences, themes, and local
+  persistence are available.
+- Signup, email verification, login, and password recovery use Supabase Auth.
 
 ## Run locally
 
@@ -11,29 +33,29 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`. If port 3000 is already in use, Next.js selects the next available port.
-
-## Included in this prototype
-
-- Today recommendation with editable time and energy context, factors, alternatives, and a first step.
-- Task capture, date phrase parsing for “today,” “tomorrow,” and “in N days,” editing, dependencies, filters, and completion.
-- Deterministic recommendation scoring using deadline, importance, time fit, energy match, dependency value, start effort, and dismissal history.
-- Focus timer with pause/resume, duration changes, and completed, partial, blocked, and did-not-start outcomes.
-- Day and week timeline, fixed commitment protection, lockable flexible blocks, revision history, accept, and undo.
-- Daily and weekly review, evidence-gated insights, editable preferences, light/dark/system themes, and browser persistence.
-
-Tasks and preferences stay in the current browser's local storage. Authentication, Supabase persistence, external calendar sync, voice capture, and AI services are not connected in this prototype.
+Open `http://localhost:3000`. If that port is in use, Next.js selects another
+available port. Local authentication needs the variables described in
+[Authentication](docs/authentication.md).
 
 ## Project checks
 
 ```bash
 npm run lint
 npm run build
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/auth/security.test.mjs
 ```
 
-## Authentication and deployment
+## Project status
 
-Login/signup use Supabase Auth when configured. See [authentication setup](docs/authentication.md)
-and [GitHub, Supabase and Vercel deployment steps](docs/deployment.md).
-Workspace content stays in per-account browser storage; Supabase data sync is not
-implemented yet.
+The deployed MVP is usable and the project is actively being developed. Cloud
+sync for tasks and preferences, calendar sync, voice capture, and AI services
+are not implemented. See [Deployment](docs/deployment.md) for the live setup and
+remaining launch checks.
+
+## Documentation
+
+- [Authentication](docs/authentication.md): local setup, email links, sessions,
+  and rate limits.
+- [Deployment](docs/deployment.md): current Vercel setup and release checks.
+- [Brand implementation](docs/brand-implementation.md): UI work, verification,
+  and outstanding brand assets.
